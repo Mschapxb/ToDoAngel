@@ -4,6 +4,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 import json
 from urllib.parse import urlparse, parse_qs
 import traceback
+from datetime import date
 
 class TodoHandler(BaseHTTPRequestHandler):
     def _set_response(self, status=200):
@@ -17,11 +18,16 @@ class TodoHandler(BaseHTTPRequestHandler):
     def do_OPTIONS(self):
         self._set_response()
 
+    def default(self, o):
+        if isinstance(o, (date)):
+            return o.isoformat()
+        raise TypeError(f'Object of type {o.__class__.__name__} is not JSON serializable')
+
     def do_GET(self):
         print("Handling GET request")
         try:
             connection = mysql.connector.connect(
-                host='db',
+                host='db',  # Utiliser le nom du service Docker
                 user='root',
                 password='root',
                 database='todo_db'
@@ -33,7 +39,7 @@ class TodoHandler(BaseHTTPRequestHandler):
             connection.close()
 
             self._set_response()
-            self.wfile.write(json.dumps(rows).encode('utf-8'))
+            self.wfile.write(json.dumps(rows, default=self.default).encode('utf-8'))
         except Error as e:
             print(f"Error handling GET request: {e}")
             traceback.print_exc()
@@ -46,9 +52,10 @@ class TodoHandler(BaseHTTPRequestHandler):
             content_length = int(self.headers['Content-Length'])
             post_data = self.rfile.read(content_length)
             todo = json.loads(post_data.decode('utf-8'))
+            print(f"Received data: {todo}")
 
             connection = mysql.connector.connect(
-                host='db',
+                host='db',  # Utiliser le nom du service Docker
                 user='root',
                 password='root',
                 database='todo_db'
@@ -73,9 +80,10 @@ class TodoHandler(BaseHTTPRequestHandler):
             content_length = int(self.headers['Content-Length'])
             put_data = self.rfile.read(content_length)
             todo = json.loads(put_data.decode('utf-8'))
+            print(f"Received data: {todo}")
 
             connection = mysql.connector.connect(
-                host='db',
+                host='db',  # Utiliser le nom du service Docker
                 user='root',
                 password='root',
                 database='todo_db'
@@ -105,10 +113,11 @@ class TodoHandler(BaseHTTPRequestHandler):
         try:
             parsed_path = urlparse(self.path)
             todo_id = parse_qs(parsed_path.query).get('id', None)
+            print(f"Received ID: {todo_id}")
 
             if todo_id:
                 connection = mysql.connector.connect(
-                    host='db',
+                    host='db',  # Utiliser le nom du service Docker
                     user='root',
                     password='root',
                     database='todo_db'
